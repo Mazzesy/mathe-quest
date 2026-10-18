@@ -3,6 +3,10 @@
   const $ = (selector) => document.querySelector(selector);
   const $$ = (selector) => [...document.querySelectorAll(selector)];
   const STORAGE_KEY = 'matheQuestProgress_v1';
+  // Keep a long but bounded per-round history to protect browser storage.
+  const TREND_HISTORY_LIMIT = 1500;
+  const TREND_PAGE_SIZE = 10;
+  let trendRowsShown = TREND_PAGE_SIZE;
   const OPERATION_INFO = { plus:{label:'Plus',symbol:'➕'}, minus:{label:'Minus',symbol:'➖'}, mal:{label:'Mal',symbol:'✖️'}, geteilt:{label:'Geteilt',symbol:'➗'} };
   const MODE_LABELS = { gemischt:'Gemischte Runde', plus:'Plus-Runde', minus:'Minus-Runde', mal:'Mal-Runde', geteilt:'Geteilt-Runde' };
   const LEVELS = {
@@ -75,7 +79,7 @@
           };
         }
       }
-      const trend = Array.isArray(parsed.trend) ? parsed.trend.filter(item => item && typeof item.date === 'string' && Number.isFinite(Date.parse(item.date))).slice(-50).map(item => {
+      const trend = Array.isArray(parsed.trend) ? parsed.trend.filter(item => item && typeof item.date === 'string' && Number.isFinite(Date.parse(item.date))).slice(-TREND_HISTORY_LIMIT).map(item => {
         const sampleOps = emptyOperationStats();
         for (const kind of Object.keys(sampleOps)) {
           const oldOp = item.ops && item.ops[kind] ? item.ops[kind] : {};
@@ -167,11 +171,11 @@
         correct = op.correct; answeredCount = op.answered; timeTotalMs = op.timeTotalMs; timeCount = op.timeCount;
       }
       if (!answeredCount) return null;
-      return {...sample, metricCorrect:correct, metricAnswered:answeredCount, accuracy:correct / answeredCount * 100, avgTimeMs:timeCount ? timeTotalMs / timeCount : null};
+      return {...sample, metricCorrect:correct, metricAnswered:answeredCount, metricTimeTotalMs:timeTotalMs, metricTimeCount:timeCount, accuracy:correct / answeredCount * 100, avgTimeMs:timeCount ? timeTotalMs / timeCount : null};
     }).filter(Boolean).sort((a,b) => Date.parse(a.date) - Date.parse(b.date));
   }
   function makeTrendSvg(rows, metric) {
-    const visible = rows.slice(-10);
+    const visible = rows.slice(-TREND_PAGE_SIZE);
     if (!visible.length) return '<div class="trend-empty">Nach deiner ersten passenden, abgeschlossenen Runde erscheinen hier die Messwerte.</div>';
     const isAccuracy = metric === 'accuracy';
     const rawValues = visible.map(row => isAccuracy ? row.accuracy : row.avgTimeMs == null ? 0 : row.avgTimeMs / 1000);
@@ -200,28 +204,49 @@
       accEl.innerHTML = '<div class="trend-empty">Noch keine passenden Daten.</div>';
       speedEl.innerHTML = '<div class="trend-empty">Noch keine passenden Zeitdaten.</div>';
       const hasTrend = (history.trend || []).length > 0;
-      summary.textContent = hasTrend ? 'Für diese Filter gibt es noch keine passenden Runden. Wähle eine andere Rechenart oder Schwierigkeitsstufe.' : 'Schließe deine erste Runde ab, um die Entwicklung über mehrere Runden zu verfolgen. Frühere Statistiken bleiben erhalten; der Verlauf beginnt ab dieser Version.';
+      summary.textContent = hasTrend ? 'Für diese Filter gibt es noch keine passenden Runden. Wähle eine andere Rechenart oder Schwierigkeitsstufe.' : 'Schließe deine erste Runde ab, um die Entwicklung über mehrere Runden zu verfolgen. Frühere Gesamtstatistiken bleiben erhalten; der Verlauf beginnt ab dieser Version.';
       table.innerHTML = '';
       return;
     }
     accEl.innerHTML = makeTrendSvg(rows, 'accuracy');
     speedEl.innerHTML = makeTrendSvg(rows, 'speed');
-    const visible = rows.slice(-10);
-    const first = visible[0], last = visible[visible.length-1];
-    if (visible.length < 2) {
-      summary.textContent = `Bisher gibt es ${visible.length} passende Runde. Nach der nächsten Runde kannst du sehen, wie sich Trefferquote und Tempo verändert haben.`;
+    const chartRows = rows.slice(-TREND_PAGE_SIZE);
+    const first = chartRows[0], last = chartRows[chartRows.length-1];
+    if (chartRows.length < 2) {
+      summary.textContent = `Bisher gibt es ${chartRows.length} passende Runde. Nach der nächsten Runde kannst du sehen, wie sich Trefferquote und Tempo verändert haben.`;
     } else {
       const accDelta = last.accuracy - first.accuracy;
       const secDelta = (last.avgTimeMs - first.avgTimeMs) / 1000;
       const accText = `${accDelta > 0 ? '+' : ''}${Math.round(accDelta)} Prozentpunkte Trefferquote`;
-      const speedText = Math.abs(secDelta) < 0.5 ? 'Aufgabenzeit etwa gleich' : `${Math.abs(secDelta).toFixed(1).replace('.', ',')} s ${secDelta < 0 ? 'schneller' : 'langsamer'} pro Aufgabe`;
-      summary.textContent = `Vergleich der ältesten und neuesten der ${visible.length} angezeigten Runden: ${accText}; ${speedText}. Das ist ein Hinweis auf die Entwicklung – unterschiedliche Schwierigkeitsgrade können den Zeitvergleich beeinflussen.`;
+      const speedText = !Number.isFinite(secDelta) ? 'Zeitvergleich noch nicht verfügbar' : Math.abs(secDelta) < 0.5 ? 'Aufgabenzeit etwa gleich' : `${Math.abs(secDelta).toFixed(1).replace('.', ',')} s ${secDelta < 0 ? 'schneller' : 'langsamer'} pro Aufgabe`;
+      summary.textContent = `Vergleich der ältesten und neuesten der ${chartRows.length} jüngsten passenden Runden: ${accText}; ${speedText}. Das ist ein Hinweis auf die Entwicklung – unterschiedliche Schwierigkeitsgrade können den Zeitvergleich beeinflussen.`;
     }
-    const rowsDesc = [...visible].reverse();
+
+    const rowsShown = Math.min(trendRowsShown, rows.length);
+    const rowsDesc = [...rows.slice(-rowsShown)].reverse();
     const modeNames = {gemischt:'Gemischt',plus:'Plus',minus:'Minus',mal:'Mal',geteilt:'Geteilt'};
     const levelNames = {leicht:'Locker',mittel:'Knobeln',schwer:'Profi'};
     const opName = $('#trendOperationFilter').value === 'all' ? 'Alle Rechenarten' : OPERATION_INFO[$('#trendOperationFilter').value].label;
-    table.innerHTML = `<div class="trend-table-wrap"><table class="trend-table"><thead><tr><th colspan="4">Letzte ${rowsDesc.length} passende Runden · ${opName}</th></tr><tr><th>Datum</th><th>Übung</th><th>Trefferquote</th><th>Ø Zeit/Aufgabe</th></tr></thead><tbody>${rowsDesc.map(row => `<tr><td>${formatTrendDate(row.date,true)}</td><td>${modeNames[row.mode] || 'Gemischt'} · ${levelNames[row.level] || 'Knobeln'}</td><td class="numeric">${row.metricCorrect}/${row.metricAnswered} (${Math.round(row.accuracy)}%)</td><td class="numeric">${formatTimeValue(row.avgTimeMs)}</td></tr>`).join('')}</tbody></table></div>`;
+
+    // Sum over ALL filtered history, not just the rows currently shown in the paginated list.
+    const totals = rows.reduce((sum, row) => {
+      sum.correct += row.metricCorrect;
+      sum.answered += row.metricAnswered;
+      sum.timeTotalMs += row.metricTimeTotalMs || 0;
+      sum.timeCount += row.metricTimeCount || 0;
+      return sum;
+    }, {correct:0, answered:0, timeTotalMs:0, timeCount:0});
+    const totalAccuracy = totals.answered ? Math.round(totals.correct / totals.answered * 100) : 0;
+    const totalAverageTime = totals.timeCount ? formatTimeValue(totals.timeTotalMs / totals.timeCount) : '–';
+    const moreCount = Math.min(TREND_PAGE_SIZE, rows.length - rowsShown);
+
+    table.innerHTML = `<div class="trend-table-wrap"><table class="trend-table"><thead><tr><th colspan="4">Verlauf: ${rowsShown} von ${rows.length} passenden Runden · ${opName}</th></tr><tr><th>Datum</th><th>Übung</th><th>Trefferquote</th><th>Ø Zeit/Aufgabe</th></tr></thead><tbody>${rowsDesc.map(row => `<tr><td>${formatTrendDate(row.date,true)}</td><td>${modeNames[row.mode] || 'Gemischt'} · ${levelNames[row.level] || 'Knobeln'}</td><td class="numeric">${row.metricCorrect}/${row.metricAnswered} (${Math.round(row.accuracy)}%)</td><td class="numeric">${row.avgTimeMs == null ? '–' : formatTimeValue(row.avgTimeMs)}</td></tr>`).join('')}</tbody></table></div>
+      <div class="trend-list-controls"><span class="trend-list-count">${rowsShown} von ${rows.length} passenden Runden angezeigt</span>${moreCount ? `<button type="button" id="loadMoreTrendRows" class="trend-load-more">Mehr laden (${moreCount})</button>` : '<span class="trend-list-end">Alle passenden Runden angezeigt</span>'}</div>
+      <section class="trend-aggregate" aria-label="Summe aller passenden Runden"><h4>Summe aller ${rows.length} gespeicherten passenden Runden</h4><div class="trend-aggregate-grid"><div><span>Runden</span><strong>${rows.length}</strong></div><div><span>Aufgaben</span><strong>${totals.answered}</strong></div><div><span>Trefferquote</span><strong>${totalAccuracy}%</strong><small>${totals.correct} richtig · ${totals.answered - totals.correct} falsch</small></div><div><span>Ø Zeit pro Aufgabe</span><strong>${totalAverageTime}</strong></div></div><p>Gemessene Gesamtzeit: ${totals.timeCount ? formatTimeValue(totals.timeTotalMs) : 'noch keine Zeitdaten'}. Die Summe berücksichtigt alle passenden gespeicherten Runden, auch wenn sie in der Liste noch nicht eingeblendet sind.</p></section>`;
+    $('#loadMoreTrendRows')?.addEventListener('click', () => {
+      trendRowsShown = Math.min(rows.length, trendRowsShown + TREND_PAGE_SIZE);
+      renderTrendStats();
+    });
   }
   function renderDifficultyStats() {
     const labels = {leicht:'Locker', mittel:'Knobeln', schwer:'Profi'};
@@ -443,7 +468,7 @@
       timeTotalMs:Math.round(roundTimeTotalMs), timeCount:roundTimeCount,
       ops:Object.fromEntries(Object.entries(roundOperationStats).map(([kind,data]) => [kind, {...data}]))
     };
-    history.trend = [...(history.trend || []), sample].slice(-50);
+    history.trend = [...(history.trend || []), sample].slice(-TREND_HISTORY_LIMIT);
     history.rounds++; saveHistory();
     $('#startView').hidden = true; $('#activeQuestion').hidden = true; $('#resultView').hidden = false;
     const percent = Math.round(roundCorrect / 10 * 100);
@@ -525,12 +550,13 @@
     if (isProgress) renderStats();
   }
   $$('.app-tab').forEach(button => button.addEventListener('click', () => setActiveTab(button.dataset.tab)));
-  $('#trendLevelFilter').addEventListener('change', renderTrendStats);
-  $('#trendOperationFilter').addEventListener('change', renderTrendStats);
+  $('#trendLevelFilter').addEventListener('change', () => { trendRowsShown = TREND_PAGE_SIZE; renderTrendStats(); });
+  $('#trendOperationFilter').addEventListener('change', () => { trendRowsShown = TREND_PAGE_SIZE; renderTrendStats(); });
   $('#resetProgressBtn').addEventListener('click', () => {
     const confirmed = window.confirm('Möchtest du wirklich den gesamten Lernfortschritt, alle Sterne und Empfehlungen zurücksetzen? Das kann nicht rückgängig gemacht werden.');
     if (!confirmed) return;
     history = createEmptyHistory();
+    trendRowsShown = TREND_PAGE_SIZE;
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(history)); } catch (_) { /* local storage may be disabled */ }
     renderStats();
     startRound();
