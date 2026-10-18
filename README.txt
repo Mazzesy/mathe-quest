@@ -24,12 +24,22 @@ FORTSCHRITT UND DATENSCHUTZ
 
 ENTHALTEN
 - Plus, Minus, Mal, Geteilt und gemischter Modus
+- Alle vier Rechenarten sind beim Öffnen vorausgewählt. Die vier Kacheln dienen direkt zum An- und Abwählen; mindestens eine Rechenart muss ausgewählt bleiben. Mehrere ausgewählte Rechenarten ergeben automatisch einen Mischmodus, eine ausgewählte Rechenart startet eine Einzelübung.
 - Drei Schwierigkeitsgrade, Tipps, direktes Feedback und Sterne
 - 10 Aufgaben pro Runde; vor jeder Runde erscheint „Runde starten“. Erst nach dem Tippen wird die erste Aufgabe angezeigt und ihre Bearbeitungszeit gemessen.
 - Separater Tab „Dein Fortschritt“ mit Zurücksetzen nach Bestätigung
 - Auswertung je Schwierigkeitsstufe und Rechenart, inklusive durchschnittlicher Aufgabenzeit
 - Zeitverlauf für Trefferquote und Bearbeitungsgeschwindigkeit über die letzten Runden, mit Filtern für Schwierigkeit und Rechenart
 - Lernempfehlungen mit Schaltfläche zum direkten Start der Übung
-- Adaptiver Mischmodus: Rechenarten mit niedrigerer Trefferquote werden auf derselben Schwierigkeitsstufe häufiger ausgewählt
+- Anpassbare Rechenarten: Durch Antippen der Rechenkacheln eine oder mehrere Rechenarten auswählen (z. B. nur Plus und Mal); ausgewählte Kacheln sind hervorgehoben. Bei jedem neuen Laden der App sind automatisch alle vier Rechenarten ausgewählt.
+- Adaptiver Mischmodus: Bei mehreren ausgewählten Rechenarten werden solche mit niedrigerer Trefferquote auf derselben Schwierigkeitsstufe häufiger ausgewählt; ab 3 Antworten pro Rechenart fließt die Trefferquote in die Gewichtung ein. Bei wenig Daten werden die ausgewählten Rechenarten zunächst gleichmäßig gewichtet.
 - PWA-Manifest, iPad-Home-Bildschirm-Metadaten und Service Worker für Offline-Nutzung
 - Keine externen Bibliotheken, Anmeldung oder Werbung
+
+
+PROJEKTSTRUKTUR
+- index.html: Seitenstruktur und Inhalte
+- styles.css: Darstellung, Farben und Tablet-/Mobil-Layout
+- app.js: Aufgabenlogik, Zeitmessung, Lernfortschritt und Ereignisse
+- sw.js: Offline-Cache (Cache-Version wird bei Updates erhöht)
+- manifest.json und icons/: Installation auf dem Home-Bildschirm

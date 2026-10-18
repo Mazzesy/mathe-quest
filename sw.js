@@ -1,8 +1,10 @@
 /* Mathe-Quest offline cache. Bump CACHE_NAME when releasing a new version. */
-const CACHE_NAME = 'mathe-quest-v6';
+const CACHE_NAME = 'mathe-quest-v9';
 const APP_FILES = [
   './',
   './index.html',
+  './styles.css',
+  './app.js',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png',
