@@ -20,7 +20,10 @@
       <div class="brand-mark" aria-hidden="true">🚀</div>
       <div><h1>Mathe-Quest</h1><p class="tagline">Rechnen, entdecken, Sterne sammeln!</p></div>
     </div>
-    <div class="total-stars" title="Deine gesammelten Sterne auf diesem Gerät"><span class="star" aria-hidden="true">⭐</span><span id="totalStars">0</span></div>
+    <div class="header-actions">
+      <button id="darkModeBtn" class="icon-button" type="button" aria-pressed="false" aria-label="Dunkles Farbschema aktivieren" title="Darstellung wechseln">🌙</button>
+      <div class="total-stars" title="Deine gesammelten Sterne auf diesem Gerät"><span class="star" aria-hidden="true">⭐</span><span id="totalStars">0</span></div>
+    </div>
   </header>
 
   <section class="hero" aria-labelledby="heroTitle">
@@ -54,9 +57,29 @@
         <button class="level" data-level="mittel" aria-pressed="true">Knobeln</button>
         <button class="level" data-level="schwer" aria-pressed="false">Profi</button>
       </div>
-      <p class="tiny-note" id="levelNote">Bis 1.000 rechnen, größere Einmaleins-Aufgaben und Division ohne Rest.</p>
+      <p class="tiny-note" id="levelNote">Bis 1.000 rechnen und größere Einmaleins-Aufgaben. Division ohne Rest.</p>
       <p class="tiny-note">💡 Tipp: Du kannst die Antwort auch mit der Enter-Taste prüfen.</p>
       <p class="adaptive-note" id="adaptiveNote">🎯 Im Mischmodus werden Rechenarten mit Übungsbedarf mit der Zeit häufiger ausgewählt.</p>
+
+      <details class="settings-details" id="settingsDetails">
+        <summary>⚙️ Weitere Übungseinstellungen</summary>
+        <div class="settings-content">
+          <label class="setting-field" for="roundLengthSelect">Aufgaben pro Runde
+            <select id="roundLengthSelect"><option value="5">5 Aufgaben · kurz</option><option value="10" selected>10 Aufgaben · normal</option><option value="20">20 Aufgaben · lang</option></select>
+          </label>
+          <label class="setting-field" for="dailyGoalSelect">Tagesziel
+            <select id="dailyGoalSelect"><option value="5">5 Aufgaben am Tag</option><option value="10" selected>10 Aufgaben am Tag</option><option value="15">15 Aufgaben am Tag</option><option value="20">20 Aufgaben am Tag</option><option value="30">30 Aufgaben am Tag</option></select>
+          </label>
+          <label class="setting-field" for="transitionSelect">Zehnerübergang bei Plus und Minus
+            <select id="transitionSelect"><option value="mixed" selected>Gemischt</option><option value="with">Mit Zehnerübergang</option><option value="without">Ohne Zehnerübergang</option></select>
+          </label>
+          <p class="setting-group-title">Zusätzliche Aufgabentypen</p>
+          <label class="setting-check"><input id="allowRemainder" type="checkbox"> <span><strong>Division mit Rest</strong><small>Antwort als „Quotient R Rest“, z. B. 3 R 2</small></span></label>
+          <label class="setting-check"><input id="allowNegatives" type="checkbox"> <span><strong>Negative Ergebnisse</strong><small>Zum Beispiel 8 − 13 = −5</small></span></label>
+          <label class="setting-check"><input id="allowDecimals" type="checkbox"> <span><strong>Dezimalzahlen</strong><small>Antworten mit einer Nachkommastelle</small></span></label>
+          <label class="setting-check"><input id="allowParentheses" type="checkbox"> <span><strong>Klammeraufgaben</strong><small>Mehrere Rechenschritte in einer Aufgabe</small></span></label>
+        </div>
+      </details>
     </aside>
 
     <section class="panel game-panel" aria-labelledby="gameHeading">
@@ -78,12 +101,14 @@
       <div id="activeQuestion" hidden>
         <div class="question-card">
           <p class="question-kicker" id="questionKicker">Aufgabe 1 von 10 · Gemischte Runde</p>
+          <p class="question-instruction" id="questionInstruction">Addiere die beiden Zahlen.</p>
           <div class="equation" id="equation" aria-label="Rechenaufgabe"><span>36</span><span class="operator">+</span><span>27</span><span class="operator">=</span><span>?</span></div>
           <form id="answerForm" autocomplete="off">
             <div class="answer-wrap">
               <label for="answer" class="unit">Deine Antwort</label>
-              <input class="answer-input" id="answer" inputmode="numeric" pattern="-?[0-9]*" type="number" step="1" placeholder="?" aria-label="Antwort als Zahl" required>
+              <input class="answer-input" id="answer" inputmode="decimal" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="?" aria-label="Antwort eingeben" required>
             </div>
+            <p class="answer-hint" id="remainderFormatHint" hidden>💡 Tipp: Gib zuerst den Quotienten und dann <strong>R</strong> und den Rest ein, z. B. <strong>3 R 2</strong>. Bei 17 ÷ 5 ist das Ergebnis 3 R 2.</p>
             <div class="actions">
               <button class="primary" id="checkBtn" type="submit">Antwort prüfen ✓</button>
               <button class="secondary" id="hintBtn" type="button">💡 Tipp anzeigen</button>
@@ -104,8 +129,11 @@
           <h2 class="section-title" id="progressTitle">📊 Dein Fortschritt</h2>
           <p class="privacy-note">Entdecke, was schon gut klappt und womit du als Nächstes trainieren kannst. Die durchschnittliche Aufgabenzeit wird ab dieser Version erfasst; beim Wechseln zu einer anderen App pausiert die Zeit.</p>
         </div>
-        <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
+        <div class="progress-actions">
           <span class="local-pill">🔒 Nur lokal gespeichert</span>
+          <button id="exportProgressBtn" class="utility-btn" type="button">⬇️ Sicherung exportieren</button>
+          <button id="importProgressBtn" class="utility-btn" type="button">⬆️ Sicherung importieren</button>
+          <input id="importFileInput" type="file" accept="application/json,.json" hidden>
           <button id="resetProgressBtn" class="reset-btn" type="button">↺ Zurücksetzen</button>
         </div>
       </div>
@@ -115,6 +143,14 @@
         <div class="progress-stat"><div class="progress-stat-icon" aria-hidden="true">✏️</div><div class="progress-stat-value" id="totalAnswered">0</div><div class="progress-stat-label">Aufgaben beantwortet</div></div>
         <div class="progress-stat"><div class="progress-stat-icon" aria-hidden="true">💫</div><div class="progress-stat-value" id="accuracy">–</div><div class="progress-stat-label">Trefferquote insgesamt</div></div>
       </div>
+
+      <section class="daily-goal" aria-labelledby="dailyGoalTitle">
+        <div class="daily-goal-head"><div><h3 id="dailyGoalTitle">🌱 Dein Tagesziel</h3><p id="dailyGoalText">0 von 10 Aufgaben heute</p></div><strong id="dailyGoalPercent">0%</strong></div>
+        <div class="daily-goal-track" role="progressbar" id="dailyGoalBar" aria-label="Fortschritt zum Tagesziel" aria-valuemin="0" aria-valuemax="10" aria-valuenow="0"><div id="dailyGoalFill"></div></div>
+        <p id="dailyGoalEncouragement" class="daily-goal-note">Jede Aufgabe zählt – ganz ohne Zeitdruck.</p>
+      </section>
+
+      <div class="review-summary" id="reviewSummary" aria-live="polite">Fehler werden zum Üben später noch einmal gestellt.</div>
 
       <section class="trend-section" aria-labelledby="trendTitle">
         <div class="trend-head">
@@ -143,6 +179,7 @@
           </label>
         </div>
         <div id="trendSummary" class="trend-summary" aria-live="polite">Schließe deine erste Runde ab, um die Entwicklung zu sehen.</div>
+        <div id="weeklySummary" class="weekly-summary" aria-live="polite">Der Wochenvergleich erscheint, sobald genügend Runden vorliegen.</div>
         <div class="trend-grid">
           <article class="trend-card">
             <h4>🎯 Trefferquote</h4>
